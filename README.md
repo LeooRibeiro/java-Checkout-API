@@ -1,65 +1,70 @@
-# API de Checkout — Design Patterns em Java
+# API de Checkout
 
-Projeto de estudo com Spring Boot que simula a criação de pedidos e o pagamento
-por Pix, cartão ou boleto. Os pagamentos são simulados: não há integração com
-bancos ou gateways reais. Os dados ficam em um banco H2 em memória e são apagados
-quando a aplicação é encerrada.
+API simples para criar pedidos e simular pagamentos por Pix, cartão ou boleto.
 
-## Padrões aplicados
+## Instalação e execução
 
-- **Strategy:** `EstrategiaPagamento` define o contrato; `PagamentoPix`,
-  `PagamentoCartao` e `PagamentoBoleto` implementam comportamentos diferentes.
-- **Facade:** `CheckoutFacade` reúne busca do pedido, seleção da estratégia,
-  processamento e atualização do status. O controller não precisa conhecer
-  esses detalhes.
-- **Singleton:** `ConfiguracaoLoja` é um componente Spring. Por padrão, o Spring
-  mantém uma única instância de cada componente por contexto da aplicação e a
-  compartilha com os objetos que dependem dela.
+1. Instale o **JDK 17** ou superior.
+2. Clone o repositório:
 
-## Requisitos e execução
+   ```bash
+   git clone https://github.com/LeooRibeiro/java-Checkout-API.git
+   cd java-Checkout-API
+   ```
 
-É necessário ter Java 17 ou superior. Na pasta do projeto, execute:
+3. Inicie a aplicação:
 
-```bash
-./gradlew bootRun
+   ```bash
+   ./gradlew bootRun
+   ```
+
+   No Windows, use `gradlew.bat bootRun`.
+
+A API inicia em `http://localhost:8080`. Os dados são guardados em um banco H2
+em memória e apagados quando a aplicação é encerrada.
+
+## Como usar
+
+Crie um pedido. A resposta inclui o identificador (`id`) que será usado no
+checkout:
+
+```http
+POST /api/pedidos
+Content-Type: application/json
+
+{
+  "descricao": "Curso de Java",
+  "valor": 99.90
+}
 ```
 
-No Windows, use `gradlew.bat bootRun`. A API inicia em `http://localhost:8080`.
-O console do H2 fica em `http://localhost:8080/h2-console` (JDBC URL
-`jdbc:h2:mem:checkoutdb`, usuário `sa`, senha em branco).
+Faça o checkout usando o `id` retornado. As formas aceitas são `PIX`, `CARTAO`
+e `BOLETO`:
 
-## Exemplos de uso
+```http
+POST /api/pedidos/1/checkout
+Content-Type: application/json
 
-Criar um pedido:
-
-```bash
-curl -X POST http://localhost:8080/api/pedidos \
-  -H "Content-Type: application/json" \
-  -d '{"descricao":"Curso de Java","valor":99.90}'
+{
+  "formaPagamento": "PIX"
+}
 ```
 
-Escolher a forma de pagamento (use o `id` retornado na criação):
+Consulte os pedidos:
 
-```bash
-curl -X POST http://localhost:8080/api/pedidos/1/checkout \
-  -H "Content-Type: application/json" \
-  -d '{"formaPagamento":"PIX"}'
+```http
+GET /api/pedidos
+GET /api/pedidos/1
 ```
 
-Valores aceitos para `formaPagamento`: `PIX`, `CARTAO` e `BOLETO`.
+## Design patterns
 
-Consultar pedidos:
-
-```bash
-curl http://localhost:8080/api/pedidos
-curl http://localhost:8080/api/pedidos/1
-```
-
-## Rotas
-
-| Método | Rota | Ação |
-| --- | --- | --- |
-| `POST` | `/api/pedidos` | Cria pedido |
-| `GET` | `/api/pedidos` | Lista pedidos |
-| `GET` | `/api/pedidos/{id}` | Consulta pedido |
-| `POST` | `/api/pedidos/{id}/checkout` | Processa pagamento |
+- **Strategy:** `EstrategiaPagamento` define o contrato de pagamento. As classes
+  `PagamentoPix`, `PagamentoCartao` e `PagamentoBoleto` implementam esse
+  contrato, permitindo escolher a forma de pagamento sem colocar todas as
+  regras em uma única classe.
+- **Facade:** `CheckoutFacade` reúne as etapas do checkout: localizar o pedido,
+  escolher e executar a estratégia de pagamento e atualizar o status. O
+  controller chama uma operação simples sem coordenar essas etapas.
+- **Singleton:** `ConfiguracaoLoja` é um componente Spring. O escopo padrão do
+  Spring mantém uma instância compartilhada por contexto da aplicação.
